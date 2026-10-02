@@ -213,6 +213,20 @@ async function route(request: Request, env: Env): Promise<Response> {
       return json({ ok: true, from, to, timezone: tz, generatedAt: Date.now(), executives: results });
     }
 
+    if (method === "GET" && sub === "/calls") {
+      const { from, to, start, end } = range();
+      const { results } = await db
+        .prepare(
+          `SELECT c.executive_id, e.name AS executive_name, c.number, c.contact_name, c.type, c.started_at, c.duration_sec
+           FROM calls c JOIN executives e ON e.id = c.executive_id
+           WHERE c.started_at >= ? AND c.started_at < ?
+           ORDER BY c.started_at DESC LIMIT 5000`
+        )
+        .bind(start, end)
+        .all();
+      return json({ ok: true, from, to, timezone: tz, calls: results });
+    }
+
     const callsMatch = sub.match(/^\/executives\/(\d+)\/calls$/);
     if (method === "GET" && callsMatch) {
       const id = Number(callsMatch[1]);

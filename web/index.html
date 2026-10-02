@@ -43,6 +43,7 @@
 
     <section id="dashboard">
       <div class="totals" id="totals"></div>
+      <button id="open-all" class="wide">Ver todas las llamadas ›</button>
       <div id="exec-list" class="cards"></div>
     </section>
 
@@ -53,8 +54,25 @@
       <div class="totals" id="detail-totals"></div>
       <h3>Llamadas por hora</h3>
       <div class="hours" id="detail-hours"></div>
-      <h3>Detalle</h3>
+      <div class="list-head"><h3>Detalle de llamadas</h3><button class="ghost" data-csv="detail">Descargar Excel</button></div>
       <ul class="call-list" id="detail-calls"></ul>
+    </section>
+
+    <section id="all" hidden>
+      <button class="back ghost" id="all-back">‹ Volver</button>
+      <h2>Todas las llamadas</h2>
+      <div class="filters">
+        <select id="all-exec"><option value="">Todos los ejecutivos</option></select>
+        <select id="all-type">
+          <option value="">Todos los tipos</option>
+          <option value="out">Realizadas contestadas</option>
+          <option value="noans">No contestadas</option>
+          <option value="in">Recibidas</option>
+          <option value="missed">Perdidas</option>
+        </select>
+      </div>
+      <div class="list-head"><p class="muted" id="all-count"></p><button class="ghost" data-csv="all">Descargar Excel</button></div>
+      <ul class="call-list" id="all-calls"></ul>
     </section>
 
     <section id="manage" hidden>

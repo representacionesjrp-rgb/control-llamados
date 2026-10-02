@@ -59,6 +59,22 @@ function fmtDuration(sec) {
   const m = Math.floor(sec / 60), s = sec % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
+function fmtTalk(sec) {
+  if (!sec) return "–";
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return m ? `${m} min ${String(s).padStart(2, "0")} s` : `${s} s`;
+}
+
+function callRow(c, { multiDay, showExec }) {
+  const [cls, icon, label] = callKind(c);
+  const number = c.number || "Número privado";
+  const when = multiDay ? fmtDateTime(c.started_at) : fmtTime(c.started_at);
+  const who = c.contact_name ? `<b>${esc(c.contact_name)}</b><span class="num">${esc(number)}</span>` : `<b class="num">${esc(number)}</b>`;
+  return `<li class="${cls}"><span class="icon">${icon}</span>
+    <span class="who">${who}<span>${showExec ? `<span class="exec">${esc(c.executive_name)}</span> · ` : ""}${esc(label)} · ${when}</span></span>
+    <span class="dur">${fmtTalk(c.duration_sec)}</span></li>`;
+}
+
 function ago(ms) {
   if (!ms) return "nunca";
   const min = Math.floor((Date.now() - ms) / 60_000);
@@ -114,6 +130,7 @@ function renderDashboard(data) {
           ${e.incoming} recibidas · ${e.missed} perdidas · ${e.distinct_numbers} números distintos
           ${e.last_call_at ? ` · última ${state.period === "today" ? fmtTime(e.last_call_at) : fmtDateTime(e.last_call_at)}` : ""}
         </div>
+        <div class="card-link">Ver detalle de llamadas ›</div>
       </article>`;
   }).join("");
 }
@@ -155,15 +172,9 @@ function renderDetail(data) {
   }
   $("detail-hours").innerHTML = bars;
 
-  const multiDay = data.from !== data.to;
+  state.lastDetail = data;
   $("detail-calls").innerHTML = calls.length
-    ? calls.map((c) => {
-        const [cls, icon, label] = callKind(c);
-        const who = c.contact_name || c.number || "Número privado";
-        return `<li class="${cls}"><span class="icon">${icon}</span>
-          <span class="who"><b>${esc(who)}</b><span>${esc(label)} · ${multiDay ? fmtDateTime(c.started_at) : fmtTime(c.started_at)}${c.contact_name ? " · " + esc(c.number) : ""}</span></span>
-          <span class="dur">${c.duration_sec ? fmtDuration(c.duration_sec) : "–"}</span></li>`;
-      }).join("")
+    ? calls.map((c) => callRow(c, { multiDay: data.from !== data.to })).join("")
     : `<li class="empty" style="display:block">Sin llamadas en este período.</li>`;
 }
 
@@ -172,6 +183,64 @@ const installUrl = () => `${location.origin}/instalar/`;
 function whatsappLink(e) {
   const text = `Hola ${e.name}, instala la app Control de llamados en tu teléfono desde este link: ${installUrl()}\n\nAl abrirla escribe este código: ${e.pair_code}`;
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
+
+function matchesType(c, filter) {
+  if (filter === "out") return c.type === "outgoing" && c.duration_sec > 0;
+  if (filter === "noans") return c.type === "outgoing" && c.duration_sec === 0;
+  if (filter === "in") return c.type === "incoming";
+  if (filter === "missed") return c.type === "missed" || c.type === "rejected";
+  return true;
+}
+
+function filteredAll() {
+  const data = state.lastAll;
+  if (!data) return [];
+  const exec = $("all-exec").value;
+  const type = $("all-type").value;
+  return data.calls.filter((c) => (!exec || String(c.executive_id) === exec) && matchesType(c, type));
+}
+
+function renderAll(data) {
+  state.lastAll = data;
+  const select = $("all-exec");
+  const chosen = select.value;
+  const names = new Map(data.calls.map((c) => [String(c.executive_id), c.executive_name]));
+  for (const e of state.lastData?.executives ?? []) names.set(String(e.id), e.name);
+  select.innerHTML = `<option value="">Todos los ejecutivos</option>` +
+    [...names].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => `<option value="${id}">${esc(name)}</option>`).join("");
+  select.value = chosen;
+  drawAll();
+}
+
+function drawAll() {
+  const calls = filteredAll();
+  const talk = calls.reduce((a, c) => a + c.duration_sec, 0);
+  $("all-count").textContent = `${calls.length} llamadas · ${fmtMinutes(talk)} hablados`;
+  const multiDay = state.lastAll && state.lastAll.from !== state.lastAll.to;
+  $("all-calls").innerHTML = calls.length
+    ? calls.map((c) => callRow(c, { multiDay, showExec: true })).join("")
+    : `<li class="empty" style="display:block">Sin llamadas en este período.</li>`;
+}
+
+function downloadCsv(kind) {
+  const rows = kind === "all"
+    ? filteredAll()
+    : (state.lastDetail?.calls ?? []).map((c) => ({ ...c, executive_name: state.lastDetail.executive.name }));
+  const dateFmt = new Intl.DateTimeFormat("es-CL", { timeZone: state.timezone, year: "numeric", month: "2-digit", day: "2-digit" });
+  const lines = [["Ejecutivo", "Fecha", "Hora", "Tipo", "Número", "Contacto", "Duración (segundos)", "Duración (min:seg)"]];
+  for (const c of rows) {
+    lines.push([c.executive_name, dateFmt.format(new Date(c.started_at)), fmtTime(c.started_at), callKind(c)[2],
+      c.number, c.contact_name || "", c.duration_sec, fmtDuration(c.duration_sec)]);
+  }
+  const csv = "\ufeff" + lines.map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
+  const { from, to } = periodRange(state.period);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = `llamadas_${from}${to !== from ? "_" + to : ""}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 
 async function renderManage() {
@@ -195,7 +264,7 @@ async function renderManage() {
 
 function show(view) {
   state.view = view;
-  for (const id of ["dashboard", "detail", "manage"]) $(id).hidden = id !== view;
+  for (const id of ["dashboard", "detail", "manage", "all"]) $(id).hidden = id !== view;
   $("periods").hidden = view === "manage";
   $("tab-manage").hidden = view === "manage";
   $("view-title").textContent = view === "manage" ? "Configuración" : "Llamadas";
@@ -208,11 +277,14 @@ async function refresh() {
   try {
     if (state.view === "detail" && state.detailId) {
       renderDetail(await api("GET", `/api/admin/executives/${state.detailId}/calls?from=${from}&to=${to}`));
+    } else if (state.view === "all") {
+      renderAll(await api("GET", `/api/admin/calls?from=${from}&to=${to}`));
     } else if (state.view === "manage") {
       await renderManage();
     } else {
       const data = await api("GET", `/api/admin/summary?from=${from}&to=${to}`);
       state.timezone = data.timezone || state.timezone;
+      state.lastData = data;
       renderDashboard(data);
     }
     $("updated").textContent = `Actualizado ${new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} · se actualiza solo cada 30 s`;
@@ -275,6 +347,14 @@ $("exec-list").addEventListener("click", (event) => {
   refresh();
 });
 
+$("open-all").addEventListener("click", () => { $("all-calls").innerHTML = ""; show("all"); refresh(); });
+$("all-back").addEventListener("click", () => { show("dashboard"); refresh(); });
+$("all-exec").addEventListener("change", drawAll);
+$("all-type").addEventListener("change", drawAll);
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-csv]");
+  if (button) downloadCsv(button.dataset.csv);
+});
 $("detail-back").addEventListener("click", () => { show("dashboard"); refresh(); });
 $("manage-back").addEventListener("click", () => { show("dashboard"); refresh(); });
 $("tab-manage").addEventListener("click", () => { show("manage"); refresh(); });

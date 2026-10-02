@@ -121,3 +121,14 @@ input {
 .ghost-link { color: var(--brand); font-weight: 600; text-decoration: none; padding: 8px 4px; }
 .manage-list .actions { align-items: center; flex-wrap: wrap; }
 a { color: var(--brand); }
+button.wide { width: 100%; margin: 0 0 14px; padding: 13px; font-size: 16px; }
+.card-link { margin-top: 10px; color: var(--brand); font-weight: 600; font-size: 15px; }
+.list-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.list-head h3, .list-head p { margin: 22px 0 8px; }
+.filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 4px; }
+select { font: inherit; width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
+.call-list .num { font-variant-numeric: tabular-nums; }
+.call-list .exec { color: var(--brand); font-weight: 600; }
+.call-list .who > span { display: block; }
+.call-list .who > span.num { font-size: 13px; color: var(--text); }
+.call-list .who > span span { display: inline; font-size: inherit; }

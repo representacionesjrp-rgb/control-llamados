@@ -33,7 +33,7 @@ App para que Jonathan (dueño, escribe en español, no es programador) controle 
 ## API
 
 - `POST /api/login` `{password}` → token de administrador.
-- `GET /api/admin/summary?from=YYYY-MM-DD&to=YYYY-MM-DD`, `GET /api/admin/executives`, `POST /api/admin/executives` `{name}`, `POST /api/admin/executives/:id/pair-code`, `DELETE /api/admin/executives/:id`, `GET /api/admin/executives/:id/calls`.
+- `GET /api/admin/summary?from=YYYY-MM-DD&to=YYYY-MM-DD`, `GET /api/admin/executives`, `POST /api/admin/executives` `{name}`, `POST /api/admin/executives/:id/pair-code`, `DELETE /api/admin/executives/:id`, `GET /api/admin/executives/:id/calls`, `GET /api/admin/calls` (todas, con nombre del ejecutivo).
 - `POST /api/device/pair` `{code, deviceModel}` → token del teléfono. `POST /api/device/calls` `{calls:[{deviceCallId, number, contactName, type, startedAt, durationSec}]}`.
 - "No contestada" = llamada saliente con duración 0.
 
