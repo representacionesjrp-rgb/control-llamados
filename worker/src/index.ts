@@ -60,14 +60,14 @@ function sessionSecret(env: Env): string {
 }
 
 async function route(request: Request, env: Env): Promise<Response> {
-  if (!env.ADMIN_PASSWORD) throw new AppError(500, "NOT_CONFIGURED", "Falta configurar ADMIN_PASSWORD.");
   const url = new URL(request.url);
   const path = url.pathname;
   const method = request.method;
   const tz = env.TIMEZONE || "America/Santiago";
   const db = env.DB;
 
-  if (path === "/health") return json({ ok: true });
+  if (path === "/health") return json({ ok: true, configured: Boolean(env.ADMIN_PASSWORD) });
+  if (!env.ADMIN_PASSWORD) throw new AppError(500, "NOT_CONFIGURED", "Falta configurar ADMIN_PASSWORD.");
 
   if (method === "POST" && path === "/api/login") {
     const key = request.headers.get("cf-connecting-ip") ?? "unknown";

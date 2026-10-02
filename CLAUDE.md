@@ -9,6 +9,12 @@ App para que Jonathan (dueño, escribe en español, no es programador) controle 
 - **24/7 en la nube**: nada depende de un computador local.
 - No se publica en Play Store (Google restringe `READ_CALL_LOG`); la APK se descarga desde el propio servidor.
 
+## En producción
+
+- Panel: https://control-llamados.representacionesjrp.workers.dev
+- Link de instalación para ejecutivos: https://control-llamados.representacionesjrp.workers.dev/instalar/
+- Cuenta Cloudflare de Jonathan (plan gratis), worker `control-llamados`, base D1 `llamados`.
+
 ## Estructura
 
 - `android/`: app nativa Kotlin (sin Compose, interfaz armada en código en `MainActivity.kt`).

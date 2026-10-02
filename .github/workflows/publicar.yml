@@ -93,11 +93,23 @@ jobs:
 
       - name: Comprobar
         if: steps.cf.outcome == 'success'
+        env:
+          URL: ${{ steps.cf.outputs.url }}
         run: |
-          for i in 1 2 3 4 5 6; do curl -fsS "${{ steps.cf.outputs.url }}/health" && break; sleep 10; done
-          curl -fsSI "${{ steps.cf.outputs.url }}/descargas/control-llamados.apk" | head -5
+          ok=""
+          for i in $(seq 1 12); do
+            if curl -fsS "$URL/health" | grep -q '"configured":true'; then ok=1; break; fi
+            sleep 10
+          done
+          if [ -z "$ok" ]; then
+            echo "::error::El servidor no responde o falta el secret ADMIN_PASSWORD"
+            curl -sS "$URL/health" || true
+            exit 1
+          fi
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' -d '{"password":"x"}' "$URL/api/login")" = 401
+          curl -fsSI "$URL/descargas/control-llamados.apk" | grep -i 'content-type'
           {
             echo "### Publicado"
-            echo "- Panel: ${{ steps.cf.outputs.url }}"
-            echo "- Link de instalacion para ejecutivos: ${{ steps.cf.outputs.url }}/instalar/"
+            echo "- Panel: $URL"
+            echo "- Link de instalacion para ejecutivos: $URL/instalar/"
           } >> "$GITHUB_STEP_SUMMARY"
