@@ -37,7 +37,15 @@
         <button data-period="yesterday">Ayer</button>
         <button data-period="week">7 días</button>
         <button data-period="month">Este mes</button>
+        <button data-period="custom">Otro período</button>
       </nav>
+      <div class="custom-range" id="custom-range" hidden>
+        <select id="month-pick" aria-label="Elegir mes"></select>
+        <div class="dates">
+          <label>Desde <input type="date" id="range-from"></label>
+          <label>Hasta <input type="date" id="range-to"></label>
+        </div>
+      </div>
       <p class="updated" id="updated"></p>
     </header>
 

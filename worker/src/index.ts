@@ -215,16 +215,37 @@ async function route(request: Request, env: Env): Promise<Response> {
 
     if (method === "GET" && sub === "/calls") {
       const { from, to, start, end } = range();
-      const { results } = await db
-        .prepare(
-          `SELECT c.executive_id, e.name AS executive_name, c.number, c.contact_name, c.type, c.started_at, c.duration_sec
-           FROM calls c JOIN executives e ON e.id = c.executive_id
-           WHERE c.started_at >= ? AND c.started_at < ?
-           ORDER BY c.started_at DESC LIMIT 5000`
-        )
-        .bind(start, end)
-        .all();
-      return json({ ok: true, from, to, timezone: tz, calls: results });
+      const q = z
+        .object({
+          exec: z.coerce.number().int().optional(),
+          type: z.enum(["out", "noans", "in", "missed"]).optional(),
+          limit: z.coerce.number().int().min(1).max(50000).default(2000)
+        })
+        .parse({
+          exec: url.searchParams.get("exec") || undefined,
+          type: url.searchParams.get("type") || undefined,
+          limit: url.searchParams.get("limit") || undefined
+        });
+      const typeFilter = {
+        out: "AND c.type = 'outgoing' AND c.duration_sec > 0",
+        noans: "AND c.type = 'outgoing' AND c.duration_sec = 0",
+        in: "AND c.type = 'incoming'",
+        missed: "AND c.type IN ('missed', 'rejected')"
+      }[q.type ?? "out"];
+      const where = `c.started_at >= ?1 AND c.started_at < ?2 ${q.exec ? "AND c.executive_id = ?3" : ""} ${q.type ? typeFilter : ""}`;
+      const binds = q.exec ? [start, end, q.exec] : [start, end];
+      const [list, totals] = await db.batch([
+        db
+          .prepare(
+            `SELECT c.executive_id, e.name AS executive_name, c.number, c.contact_name, c.type, c.started_at, c.duration_sec
+             FROM calls c JOIN executives e ON e.id = c.executive_id
+             WHERE ${where} ORDER BY c.started_at DESC LIMIT ${q.limit}`
+          )
+          .bind(...binds),
+        db.prepare(`SELECT COUNT(*) AS total, COALESCE(SUM(c.duration_sec), 0) AS talk_sec FROM calls c WHERE ${where}`).bind(...binds)
+      ]);
+      const sums = (totals?.results[0] ?? { total: 0, talk_sec: 0 }) as { total: number; talk_sec: number };
+      return json({ ok: true, from, to, timezone: tz, total: sums.total, talkSec: sums.talk_sec, calls: list?.results ?? [] });
     }
 
     const callsMatch = sub.match(/^\/executives\/(\d+)\/calls$/);

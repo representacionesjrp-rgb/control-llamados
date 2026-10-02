@@ -20,7 +20,7 @@ App para que Jonathan (dueño, escribe en español, no es programador) controle 
 - `android/`: app nativa Kotlin (sin Compose, interfaz armada en código en `MainActivity.kt`).
   - `CallSyncService`: servicio en primer plano (`specialUse`) con `ContentObserver` sobre `CallLog.Calls`; envía cada llamada ~4 s después de colgar y revisa cada 10 min.
   - `SyncWorker`: respaldo con WorkManager cada 15 min. `BootReceiver` lo reinicia al encender.
-  - `Sync.kt`: lee el registro desde la última llamada enviada menos 3 h (el servidor hace upsert, reenviar es seguro).
+  - `Sync.kt`: lee el registro desde la última llamada enviada menos 3 h (el servidor hace upsert, reenviar es seguro). Al vincular (o al actualizar desde una versión vieja) envía una vez los últimos 120 días (`historyDaysSent`).
   - Firmada con `android/app/llamados.keystore` (en el repo a propósito, para que cada versión se instale encima). No cambiar la clave o los teléfonos tendrán que desinstalar.
   - La dirección del servidor se graba al compilar (`SERVER_URL` o `serverUrl` en `gradle.properties`).
 - `worker/`: API en Cloudflare Workers + base D1 (`migrations/`). Sin framework; rutas en `src/index.ts`.
@@ -33,7 +33,8 @@ App para que Jonathan (dueño, escribe en español, no es programador) controle 
 ## API
 
 - `POST /api/login` `{password}` → token de administrador.
-- `GET /api/admin/summary?from=YYYY-MM-DD&to=YYYY-MM-DD`, `GET /api/admin/executives`, `POST /api/admin/executives` `{name}`, `POST /api/admin/executives/:id/pair-code`, `DELETE /api/admin/executives/:id`, `GET /api/admin/executives/:id/calls`, `GET /api/admin/calls` (todas, con nombre del ejecutivo).
+- `GET /api/admin/summary?from=YYYY-MM-DD&to=YYYY-MM-DD`, `GET /api/admin/executives`, `POST /api/admin/executives` `{name}`, `POST /api/admin/executives/:id/pair-code`, `DELETE /api/admin/executives/:id`, `GET /api/admin/executives/:id/calls`, `GET /api/admin/calls?exec=&type=out|noans|in|missed&limit=` (todas, con nombre del ejecutivo y totales; límite por defecto 2000, máximo 50000 para el Excel).
+- Las llamadas se guardan sin límite de tiempo; el panel permite elegir cualquier mes de los últimos 12 o un rango de fechas ("Otro período").
 - `POST /api/device/pair` `{code, deviceModel}` → token del teléfono. `POST /api/device/calls` `{calls:[{deviceCallId, number, contactName, type, startedAt, durationSec}]}`.
 - "No contestada" = llamada saliente con duración 0.
 

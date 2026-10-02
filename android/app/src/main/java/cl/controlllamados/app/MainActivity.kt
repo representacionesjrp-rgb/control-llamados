@@ -103,6 +103,7 @@ class MainActivity : Activity() {
                         prefs.token = token
                         prefs.executiveName = name
                         prefs.lastCallDate = 0L
+                        prefs.historyDaysSent = 0
                         prefs.lastError = null
                         render()
                         requestPermissionsIfNeeded()

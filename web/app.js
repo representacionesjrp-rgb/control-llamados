@@ -4,6 +4,8 @@ const REFRESH_MS = 30_000;
 const state = {
   token: load("token"),
   period: load("period") || "today",
+  customFrom: load("customFrom"),
+  customTo: load("customTo"),
   timezone: "America/Santiago",
   view: "dashboard",
   detailId: null,
@@ -46,7 +48,58 @@ function periodRange(period) {
   if (period === "yesterday") { const y = localDate(-1); return { from: y, to: y }; }
   if (period === "week") return { from: localDate(-6), to: today };
   if (period === "month") return { from: today.slice(0, 8) + "01", to: today };
+  if (period === "custom" && state.customFrom && state.customTo) {
+    const [from, to] = [state.customFrom, state.customTo].sort();
+    return { from, to };
+  }
   return { from: today, to: today };
+}
+
+const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+function lastDayOfMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+/** Month picker with the last 12 months and date inputs, shown for "Otro período". */
+function setupCustomRange() {
+  const today = localDate(0);
+  let year = Number(today.slice(0, 4)), month = Number(today.slice(5, 7));
+  let options = `<option value="">Elegir un mes…</option>`;
+  for (let i = 0; i < 12; i++) {
+    const from = `${year}-${String(month).padStart(2, "0")}-01`;
+    const end = `${year}-${String(month).padStart(2, "0")}-${String(lastDayOfMonth(year, month)).padStart(2, "0")}`;
+    const to = end > today ? today : end;
+    options += `<option value="${from}|${to}">${MONTHS[month - 1]} ${year}</option>`;
+    month -= 1;
+    if (month === 0) { month = 12; year -= 1; }
+  }
+  $("month-pick").innerHTML = options;
+  $("range-from").max = today;
+  $("range-to").max = today;
+  if (!state.customFrom) {
+    state.customFrom = today.slice(0, 8) + "01";
+    state.customTo = today;
+  }
+  syncCustomInputs();
+}
+
+function syncCustomInputs() {
+  $("range-from").value = state.customFrom || "";
+  $("range-to").value = state.customTo || "";
+  const key = `${state.customFrom}|${state.customTo}`;
+  $("month-pick").value = [...$("month-pick").options].some((o) => o.value === key) ? key : "";
+  $("custom-range").hidden = state.period !== "custom";
+}
+
+function setCustom(from, to) {
+  if (!from || !to) return;
+  state.customFrom = from;
+  state.customTo = to;
+  save("customFrom", from);
+  save("customTo", to);
+  syncCustomInputs();
+  refresh();
 }
 const fmtTime = (ms) => new Date(ms).toLocaleTimeString("es-CL", { timeZone: state.timezone, hour: "2-digit", minute: "2-digit" });
 const fmtDateTime = (ms) => new Date(ms).toLocaleString("es-CL", { timeZone: state.timezone, day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -185,48 +238,44 @@ function whatsappLink(e) {
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }
 
-function matchesType(c, filter) {
-  if (filter === "out") return c.type === "outgoing" && c.duration_sec > 0;
-  if (filter === "noans") return c.type === "outgoing" && c.duration_sec === 0;
-  if (filter === "in") return c.type === "incoming";
-  if (filter === "missed") return c.type === "missed" || c.type === "rejected";
-  return true;
-}
-
-function filteredAll() {
-  const data = state.lastAll;
-  if (!data) return [];
-  const exec = $("all-exec").value;
-  const type = $("all-type").value;
-  return data.calls.filter((c) => (!exec || String(c.executive_id) === exec) && matchesType(c, type));
+function allQuery(limit) {
+  const { from, to } = periodRange(state.period);
+  const params = new URLSearchParams({ from, to });
+  if ($("all-exec").value) params.set("exec", $("all-exec").value);
+  if ($("all-type").value) params.set("type", $("all-type").value);
+  if (limit) params.set("limit", String(limit));
+  return `/api/admin/calls?${params}`;
 }
 
 function renderAll(data) {
   state.lastAll = data;
   const select = $("all-exec");
   const chosen = select.value;
-  const names = new Map(data.calls.map((c) => [String(c.executive_id), c.executive_name]));
+  const names = new Map();
   for (const e of state.lastData?.executives ?? []) names.set(String(e.id), e.name);
+  for (const c of data.calls) names.set(String(c.executive_id), c.executive_name);
   select.innerHTML = `<option value="">Todos los ejecutivos</option>` +
     [...names].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => `<option value="${id}">${esc(name)}</option>`).join("");
   select.value = chosen;
-  drawAll();
-}
-
-function drawAll() {
-  const calls = filteredAll();
-  const talk = calls.reduce((a, c) => a + c.duration_sec, 0);
-  $("all-count").textContent = `${calls.length} llamadas · ${fmtMinutes(talk)} hablados`;
-  const multiDay = state.lastAll && state.lastAll.from !== state.lastAll.to;
-  $("all-calls").innerHTML = calls.length
-    ? calls.map((c) => callRow(c, { multiDay, showExec: true })).join("")
+  const shown = data.calls.length < data.total ? ` · se muestran las ${data.calls.length} más recientes (el Excel trae todas)` : "";
+  $("all-count").textContent = `${data.total} llamadas · ${fmtMinutes(data.talkSec)} hablados${shown}`;
+  const multiDay = data.from !== data.to;
+  $("all-calls").innerHTML = data.calls.length
+    ? data.calls.map((c) => callRow(c, { multiDay, showExec: true })).join("")
     : `<li class="empty" style="display:block">Sin llamadas en este período.</li>`;
 }
 
-function downloadCsv(kind) {
-  const rows = kind === "all"
-    ? filteredAll()
-    : (state.lastDetail?.calls ?? []).map((c) => ({ ...c, executive_name: state.lastDetail.executive.name }));
+async function downloadCsv(kind) {
+  const { from, to } = periodRange(state.period);
+  let url = allQuery(50000);
+  if (kind === "detail") url = `/api/admin/calls?${new URLSearchParams({ from, to, exec: String(state.detailId), limit: "50000" })}`;
+  let rows;
+  try {
+    rows = (await api("GET", url)).calls;
+  } catch (error) {
+    alert(error.message);
+    return;
+  }
   const dateFmt = new Intl.DateTimeFormat("es-CL", { timeZone: state.timezone, year: "numeric", month: "2-digit", day: "2-digit" });
   const lines = [["Ejecutivo", "Fecha", "Hora", "Tipo", "Número", "Contacto", "Duración (segundos)", "Duración (min:seg)"]];
   for (const c of rows) {
@@ -234,7 +283,6 @@ function downloadCsv(kind) {
       c.number, c.contact_name || "", c.duration_sec, fmtDuration(c.duration_sec)]);
   }
   const csv = "\ufeff" + lines.map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
-  const { from, to } = periodRange(state.period);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
   a.download = `llamadas_${from}${to !== from ? "_" + to : ""}.csv`;
@@ -266,6 +314,7 @@ function show(view) {
   state.view = view;
   for (const id of ["dashboard", "detail", "manage", "all"]) $(id).hidden = id !== view;
   $("periods").hidden = view === "manage";
+  $("custom-range").hidden = view === "manage" || state.period !== "custom";
   $("tab-manage").hidden = view === "manage";
   $("view-title").textContent = view === "manage" ? "Configuración" : "Llamadas";
   window.scrollTo(0, 0);
@@ -278,7 +327,7 @@ async function refresh() {
     if (state.view === "detail" && state.detailId) {
       renderDetail(await api("GET", `/api/admin/executives/${state.detailId}/calls?from=${from}&to=${to}`));
     } else if (state.view === "all") {
-      renderAll(await api("GET", `/api/admin/calls?from=${from}&to=${to}`));
+      renderAll(await api("GET", allQuery()));
     } else if (state.view === "manage") {
       await renderManage();
     } else {
@@ -302,6 +351,7 @@ function enterApp() {
   $("login").hidden = true;
   $("app").hidden = false;
   for (const b of $("periods").querySelectorAll("button")) b.classList.toggle("active", b.dataset.period === state.period);
+  setupCustomRange();
   show("dashboard");
   refresh();
   startTimer();
@@ -335,8 +385,16 @@ $("periods").addEventListener("click", (event) => {
   state.period = button.dataset.period;
   save("period", state.period);
   for (const b of $("periods").querySelectorAll("button")) b.classList.toggle("active", b === button);
+  syncCustomInputs();
   refresh();
 });
+
+$("month-pick").addEventListener("change", () => {
+  const [from, to] = $("month-pick").value.split("|");
+  setCustom(from, to);
+});
+$("range-from").addEventListener("change", () => setCustom($("range-from").value, $("range-to").value));
+$("range-to").addEventListener("change", () => setCustom($("range-from").value, $("range-to").value));
 
 $("exec-list").addEventListener("click", (event) => {
   const card = event.target.closest(".card");
@@ -349,8 +407,8 @@ $("exec-list").addEventListener("click", (event) => {
 
 $("open-all").addEventListener("click", () => { $("all-calls").innerHTML = ""; show("all"); refresh(); });
 $("all-back").addEventListener("click", () => { show("dashboard"); refresh(); });
-$("all-exec").addEventListener("change", drawAll);
-$("all-type").addEventListener("change", drawAll);
+$("all-exec").addEventListener("change", refresh);
+$("all-type").addEventListener("change", refresh);
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-csv]");
   if (button) downloadCsv(button.dataset.csv);

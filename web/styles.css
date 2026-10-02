@@ -132,3 +132,7 @@ select { font: inherit; width: 100%; padding: 10px; border-radius: 10px; border:
 .call-list .who > span { display: block; }
 .call-list .who > span.num { font-size: 13px; color: var(--text); }
 .call-list .who > span span { display: inline; font-size: inherit; }
+.custom-range { display: grid; gap: 8px; margin: 2px 0 8px; }
+.custom-range .dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.custom-range label { font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+.custom-range input { padding: 9px; }

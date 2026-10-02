@@ -9,7 +9,8 @@ import androidx.core.content.ContextCompat
 object Sync {
     private const val TAG = "ControlLlamados"
     private const val BATCH = 500
-    private const val FIRST_SYNC_DAYS = 7L
+    /** History sent once after pairing (or after updating from a version that sent less). */
+    private const val HISTORY_DAYS = 120
     /** Re-send a window so a long call (logged when it ends, dated when it started) is never skipped. */
     private const val OVERLAP_MS = 3 * 3600_000L
 
@@ -26,8 +27,9 @@ object Sync {
             prefs.lastError = "Falta el permiso de registro de llamadas"
             return Result.Failed(prefs.lastError!!)
         }
-        val since = if (prefs.lastCallDate == 0L) {
-            System.currentTimeMillis() - FIRST_SYNC_DAYS * 24 * 3600_000L
+        val needsHistory = prefs.historyDaysSent < HISTORY_DAYS
+        val since = if (prefs.lastCallDate == 0L || needsHistory) {
+            System.currentTimeMillis() - HISTORY_DAYS * 24 * 3600_000L
         } else {
             prefs.lastCallDate - OVERLAP_MS
         }
@@ -41,6 +43,7 @@ object Sync {
                 // Still report in so the dashboard shows the phone is alive.
                 Api.uploadCalls(prefs.serverUrl, token, emptyList())
             }
+            if (needsHistory) prefs.historyDaysSent = HISTORY_DAYS
             prefs.lastSyncAt = System.currentTimeMillis()
             prefs.lastError = null
             Result.Ok(calls.size)

@@ -59,10 +59,22 @@ test("pair a phone, upload calls, and read today's summary", async () => {
   assert.equal(detail.body.calls.length, 505);
   assert.equal(detail.body.calls.find((c) => c.number === "+56911111111" && c.duration_sec === 125).contact_name, "Cliente Uno");
 
-  const all = await call("GET", "/api/admin/calls", undefined, admin);
-  const mine = all.body.calls.filter((c) => c.executive_id === row.id);
-  assert.equal(mine.length, 505);
-  assert.equal(mine[0].executive_name, name);
+  const mine = await call("GET", `/api/admin/calls?exec=${row.id}&limit=50000`, undefined, admin);
+  assert.equal(mine.body.total, 505);
+  assert.equal(mine.body.calls.length, 505);
+  assert.equal(mine.body.calls[0].executive_name, name);
+  const noAnswer = await call("GET", `/api/admin/calls?exec=${row.id}&type=noans`, undefined, admin);
+  assert.equal(noAnswer.body.total, 1);
+  const limited = await call("GET", `/api/admin/calls?exec=${row.id}&limit=10`, undefined, admin);
+  assert.equal(limited.body.calls.length, 10);
+  assert.equal(limited.body.total, 505);
+
+  // Older months stay queryable: a call 100 days ago shows up in its own range.
+  const old = now - 100 * 86_400_000;
+  await call("POST", "/api/device/calls", { calls: [{ deviceCallId: "old1", number: "+569", type: "outgoing", startedAt: old, durationSec: 30 }] }, paired.body.token);
+  const day = new Date(old - 4 * 3600_000).toISOString().slice(0, 10);
+  const oldRange = await call("GET", `/api/admin/calls?exec=${row.id}&from=${day}&to=${day}`, undefined, admin);
+  assert.equal(oldRange.body.total, 1);
 
   await call("POST", `/api/admin/executives/${row.id}/pair-code`, {}, admin);
   assert.equal((await call("POST", "/api/device/calls", { calls }, paired.body.token)).status, 401);

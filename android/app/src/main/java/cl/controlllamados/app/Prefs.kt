@@ -24,6 +24,11 @@ class Prefs(context: Context) {
         get() = prefs.getLong("last_call_date", 0L)
         set(value) = prefs.edit().putLong("last_call_date", value).apply()
 
+    /** How many days of history have already been sent once (older versions sent 7). */
+    var historyDaysSent: Int
+        get() = prefs.getInt("history_days_sent", 0)
+        set(value) = prefs.edit().putInt("history_days_sent", value).apply()
+
     var lastSyncAt: Long
         get() = prefs.getLong("last_sync_at", 0L)
         set(value) = prefs.edit().putLong("last_sync_at", value).apply()
@@ -35,6 +40,6 @@ class Prefs(context: Context) {
     val isPaired: Boolean get() = !token.isNullOrBlank()
 
     fun unpair() {
-        prefs.edit().remove("token").remove("executive_name").remove("last_call_date").apply()
+        prefs.edit().remove("token").remove("executive_name").remove("last_call_date").remove("history_days_sent").apply()
     }
 }
