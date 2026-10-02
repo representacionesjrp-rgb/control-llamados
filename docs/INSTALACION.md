@@ -1,52 +1,56 @@
 # Instalación
 
-## 1. Servidor en Railway
+Todo corre en Cloudflare con el plan gratuito. Se configura una sola vez; después cada cambio se publica solo.
 
-1. En Railway: **New Project → Deploy from GitHub repo →** elegir este repositorio. Railway usa el `Dockerfile` automáticamente.
-2. En el servicio, **Settings → Volumes → Add volume** y montarlo en `/data` (ahí queda la base de datos; sin volumen se pierde en cada despliegue).
-3. En **Variables** agregar:
-   - `ADMIN_PASSWORD`: la contraseña con la que vas a entrar al panel.
-   - `SESSION_SECRET`: un texto largo al azar (40 caracteres o más).
-   - `TIMEZONE`: `America/Santiago` (opcional, es el valor por defecto).
-4. En **Settings → Networking → Generate Domain**. Queda algo como `https://control-llamados.up.railway.app`.
+## 1. Cuenta de Cloudflare y clave de acceso (una vez)
 
-## 2. Grabar la dirección del servidor en la app Android
+1. Crear una cuenta gratis en [dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up). No pide tarjeta.
+2. Ir a [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens) → **Create Token** → plantilla **Edit Cloudflare Workers** → **Use template**.
+3. En **Permissions** tocar **+ Add more** y agregar: **Account · D1 · Edit**.
+4. **Continue to summary → Create Token** y copiar el texto que aparece (se muestra una sola vez).
 
-En GitHub: **Settings → Secrets and variables → Actions → Variables → New repository variable**, nombre `SERVER_URL`, valor la dirección del paso anterior. Luego **Actions → App Android → Run workflow**.
+## 2. Guardar dos claves en GitHub (una vez)
 
-Así el ejecutivo solo escribe su código. (Si no se configura, la app le pide también la dirección del servidor.)
+En el repositorio: **Settings → Secrets and variables → Actions → New repository secret**:
+
+- `CLOUDFLARE_API_TOKEN`: el texto copiado en el paso anterior.
+- `ADMIN_PASSWORD`: la contraseña con la que vas a entrar al panel.
+
+Luego **Actions → Publicar → Run workflow**. Al terminar, el resumen muestra la dirección del panel y el link de instalación.
 
 ## 3. Panel en el iPhone
 
-1. Abrir la dirección del servidor en **Safari** e ingresar con `ADMIN_PASSWORD`.
+1. Abrir la dirección del panel en **Safari** e ingresar con la contraseña.
 2. Botón compartir → **Agregar a pantalla de inicio**. Queda el ícono "Llamados".
-3. En **Ejecutivos** agregar a cada ejecutivo. Cada uno recibe un código de 6 letras.
+3. En **Ejecutivos** agregar a cada ejecutivo y tocar **Enviar por WhatsApp**: le llega el link de instalación y su código.
 
-## 4. App en el teléfono de cada ejecutivo
+## 4. Lo que hace el ejecutivo
 
-1. Descargar `control-llamados.apk` desde **Releases → android-latest** del repositorio y enviarlo al ejecutivo (WhatsApp, correo o cable).
-2. En el teléfono, abrir el archivo. Android pedirá permitir "instalar apps de origen desconocido" para WhatsApp/Archivos/Chrome: aceptar.
-   Si aparece Play Protect, elegir **Más detalles → Instalar de todas formas** (pasa con toda app que no viene de Play Store).
-3. Abrir **Control de llamados**, escribir el código y tocar **Vincular este teléfono**.
-4. Aceptar los permisos: **Registro de llamadas**, **Notificaciones** y **Permitir en segundo plano** (sin batería optimizada).
-5. Listo. Aparece una notificación discreta "Control de llamados" que indica que está activo.
+1. Abre el link en su teléfono Android y toca **Descargar app**.
+2. Abre el archivo. Si Android pregunta, permite instalar desde esa fuente. Si aparece Play Protect: **Más detalles → Instalar de todas formas**.
+3. Abre **Control de llamados**, escribe su código y toca **Vincular**.
+4. Acepta los permisos (registro de llamadas, notificaciones y segundo plano).
 
-En teléfonos Xiaomi, Huawei, Oppo o Realme conviene además activar el **Inicio automático** de la app en Ajustes, porque esas marcas cierran apps en segundo plano con más fuerza.
+En teléfonos Xiaomi, Huawei, Oppo o Realme conviene además activar el **Inicio automático** de la app en Ajustes.
 
-Para actualizar la app basta instalar la APK nueva encima; el teléfono sigue vinculado.
+Para actualizar la app basta instalarla de nuevo desde el mismo link; el teléfono sigue vinculado.
 
 ## Cambiar de teléfono
 
-En el panel, **Ejecutivos → Cambiar teléfono** genera un código nuevo. El teléfono anterior deja de enviar datos y se vincula el nuevo con ese código.
+En el panel, **Ejecutivos → Cambiar teléfono** genera un código nuevo. El teléfono anterior deja de enviar datos.
+
+## Límites del plan gratuito
+
+100.000 consultas al día y 5 GB de base de datos. Con 10 ejecutivos se usan unas 3.000 consultas al día, y un año de llamadas ocupa menos de 100 MB.
 
 ## Por qué no está en Play Store
 
-Google solo permite leer el registro de llamadas a apps cuya función principal es ser marcador o similar, así que esta app se instala directo con la APK. Ver la [política de Google](https://support.google.com/googleplay/android-developer/answer/10208820).
+Google solo permite leer el registro de llamadas a apps cuya función principal es ser marcador, así que la app se instala desde el link.
 
 ## Qué no se registra
 
 - Llamadas de WhatsApp, Teams u otras apps: Android no las guarda en el registro de llamadas.
-- Llamadas hechas desde otro teléfono o desde un chip que no esté en ese equipo.
+- Llamadas hechas desde otro teléfono.
 
 ## Aviso
 

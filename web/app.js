@@ -167,7 +167,15 @@ function renderDetail(data) {
     : `<li class="empty" style="display:block">Sin llamadas en este período.</li>`;
 }
 
+const installUrl = () => `${location.origin}/instalar/`;
+
+function whatsappLink(e) {
+  const text = `Hola ${e.name}, instala la app Control de llamados en tu teléfono desde este link: ${installUrl()}\n\nAl abrirla escribe este código: ${e.pair_code}`;
+  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
+
 async function renderManage() {
+  $("install-link").textContent = installUrl();
   const { executives } = await api("GET", "/api/admin/executives");
   $("manage-list").innerHTML = executives.map((e) => `
     <li data-id="${e.id}">
@@ -176,6 +184,7 @@ async function renderManage() {
       </div>
       <div class="muted">${e.pair_code ? "Ingresa este código en la app Android del ejecutivo." : `Último envío ${ago(e.last_sync_at)}`}</div>
       <div class="actions">
+        ${e.pair_code ? `<a class="ghost-link" href="${whatsappLink(e)}" target="_blank" rel="noopener">Enviar por WhatsApp</a>` : ""}
         <button class="ghost" data-action="code">${e.pair_code ? "Nuevo código" : "Cambiar teléfono"}</button>
         <button class="ghost danger" data-action="delete">Eliminar</button>
       </div>

@@ -10,3 +10,4 @@ android/local.properties
 .idea/
 .dev.vars
 .wrangler/
+web/descargas/*.apk

@@ -118,3 +118,6 @@ input {
 .code { font: 700 22px ui-monospace, Menlo, monospace; letter-spacing: .15em; color: var(--brand); }
 .manage-list .actions { display: flex; gap: 12px; margin-top: 6px; }
 .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
+.ghost-link { color: var(--brand); font-weight: 600; text-decoration: none; padding: 8px 4px; }
+.manage-list .actions { align-items: center; flex-wrap: wrap; }
+a { color: var(--brand); }

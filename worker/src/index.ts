@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createHash } from "node:crypto";
 import { hashToken, issueAdminToken, randomPairCode, randomToken, safeEqual, verifyAdminToken } from "./auth";
 import { dateRange, today } from "./time";
 
@@ -6,7 +7,8 @@ export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
   ADMIN_PASSWORD: string;
-  SESSION_SECRET: string;
+  /** Optional: when missing, sessions are signed with a key derived from ADMIN_PASSWORD. */
+  SESSION_SECRET?: string;
   TIMEZONE?: string;
 }
 
@@ -52,7 +54,13 @@ async function body(request: Request): Promise<unknown> {
 // Best effort per isolate; Cloudflare may run several isolates.
 const failedLogins = new Map<string, { count: number; resetAt: number }>();
 
+function sessionSecret(env: Env): string {
+  if (env.SESSION_SECRET) return env.SESSION_SECRET;
+  return createHash("sha256").update(`control-llamados:${env.ADMIN_PASSWORD}`).digest("hex");
+}
+
 async function route(request: Request, env: Env): Promise<Response> {
+  if (!env.ADMIN_PASSWORD) throw new AppError(500, "NOT_CONFIGURED", "Falta configurar ADMIN_PASSWORD.");
   const url = new URL(request.url);
   const path = url.pathname;
   const method = request.method;
@@ -76,7 +84,7 @@ async function route(request: Request, env: Env): Promise<Response> {
       throw new AppError(401, "BAD_PASSWORD", "Contraseña incorrecta.");
     }
     failedLogins.delete(key);
-    return json({ ok: true, token: issueAdminToken(env.SESSION_SECRET) });
+    return json({ ok: true, token: issueAdminToken(sessionSecret(env)) });
   }
 
   // ---------- Device (executive's Android phone) ----------
@@ -128,7 +136,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   // ---------- Admin (manager dashboard) ----------
 
   if (path.startsWith("/api/admin/")) {
-    if (!verifyAdminToken(bearer(request), env.SESSION_SECRET)) {
+    if (!verifyAdminToken(bearer(request), sessionSecret(env))) {
       throw new AppError(401, "UNAUTHORIZED", "Sesion expirada. Vuelve a ingresar.");
     }
     const sub = path.slice("/api/admin".length);

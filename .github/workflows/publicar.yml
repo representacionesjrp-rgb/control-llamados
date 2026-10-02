@@ -1,0 +1,103 @@
+name: Publicar
+
+# On every push to main: builds the Android app, then publishes the server, the dashboard
+# and the APK (at /instalar/) to Cloudflare. Needs two repository secrets:
+#   CLOUDFLARE_API_TOKEN  token with Workers Scripts: Edit, D1: Edit and Account Settings: Read
+#   ADMIN_PASSWORD        password for the dashboard
+# Without them (e.g. on pull requests) it only builds and checks.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: publicar-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      DEPLOY: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Instalar dependencias del servidor
+        working-directory: worker
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+
+      - name: Cuenta de Cloudflare y direccion del servidor
+        id: cf
+        if: env.DEPLOY == 'true' && env.CLOUDFLARE_API_TOKEN != ''
+        run: |
+          api() { curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" "$@"; }
+          ACCOUNT_ID=$(api https://api.cloudflare.com/client/v4/accounts | jq -r '.result[0].id')
+          test -n "$ACCOUNT_ID" && test "$ACCOUNT_ID" != null
+          SUB=$(api "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" | jq -r '.result.subdomain // empty' || true)
+          if [ -z "$SUB" ]; then
+            # New accounts have no workers.dev subdomain yet: create one.
+            SUB="llamados-$(echo "$ACCOUNT_ID" | cut -c1-8)"
+            api -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" -d "{\"subdomain\":\"$SUB\"}" > /dev/null
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$ACCOUNT_ID" >> "$GITHUB_ENV"
+          echo "SERVER_URL=https://control-llamados.$SUB.workers.dev" >> "$GITHUB_ENV"
+          echo "url=https://control-llamados.$SUB.workers.dev" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compilar app Android
+        working-directory: android
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Copiar APK a la pagina de descarga
+        run: cp android/app/build/outputs/apk/release/app-release.apk web/descargas/control-llamados.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: control-llamados-apk
+          path: web/descargas/control-llamados.apk
+
+      - name: Base de datos
+        if: steps.cf.outcome == 'success'
+        working-directory: worker
+        run: |
+          ID=$(npx wrangler d1 list --json | jq -r '.[] | select(.name == "llamados") | .uuid')
+          if [ -z "$ID" ]; then
+            npx wrangler d1 create llamados > /dev/null
+            ID=$(npx wrangler d1 list --json | jq -r '.[] | select(.name == "llamados") | .uuid')
+          fi
+          sed -i "s/00000000-0000-0000-0000-000000000000/$ID/" wrangler.jsonc
+          npx wrangler d1 migrations apply llamados --remote
+
+      - name: Publicar en Cloudflare
+        if: steps.cf.outcome == 'success'
+        working-directory: worker
+        run: |
+          npx wrangler deploy
+          if [ -n "$ADMIN_PASSWORD" ]; then
+            printf '%s' "$ADMIN_PASSWORD" | npx wrangler secret put ADMIN_PASSWORD
+          fi
+
+      - name: Comprobar
+        if: steps.cf.outcome == 'success'
+        run: |
+          for i in 1 2 3 4 5 6; do curl -fsS "${{ steps.cf.outputs.url }}/health" && break; sleep 10; done
+          curl -fsSI "${{ steps.cf.outputs.url }}/descargas/control-llamados.apk" | head -5
+          {
+            echo "### Publicado"
+            echo "- Panel: ${{ steps.cf.outputs.url }}"
+            echo "- Link de instalacion para ejecutivos: ${{ steps.cf.outputs.url }}/instalar/"
+          } >> "$GITHUB_STEP_SUMMARY"
