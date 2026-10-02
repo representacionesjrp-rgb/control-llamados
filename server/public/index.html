@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Control de llamados</title>
+  <meta name="theme-color" content="#0f6b5c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Llamados">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main id="login" class="screen" hidden>
+    <div class="login-box">
+      <div class="logo">☎</div>
+      <h1>Control de llamados</h1>
+      <form id="login-form">
+        <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password" required>
+        <button type="submit">Ingresar</button>
+        <p id="login-error" class="error"></p>
+      </form>
+    </div>
+  </main>
+
+  <main id="app" class="screen" hidden>
+    <header class="top">
+      <div class="title-row">
+        <h1 id="view-title">Llamadas</h1>
+        <button id="tab-manage" class="ghost">Ejecutivos</button>
+      </div>
+      <nav class="periods" id="periods">
+        <button data-period="today" class="active">Hoy</button>
+        <button data-period="yesterday">Ayer</button>
+        <button data-period="week">7 días</button>
+        <button data-period="month">Este mes</button>
+      </nav>
+      <p class="updated" id="updated"></p>
+    </header>
+
+    <section id="dashboard">
+      <div class="totals" id="totals"></div>
+      <div id="exec-list" class="cards"></div>
+    </section>
+
+    <section id="detail" hidden>
+      <button class="back ghost" id="detail-back">‹ Volver</button>
+      <h2 id="detail-name"></h2>
+      <p class="muted" id="detail-meta"></p>
+      <div class="totals" id="detail-totals"></div>
+      <h3>Llamadas por hora</h3>
+      <div class="hours" id="detail-hours"></div>
+      <h3>Detalle</h3>
+      <ul class="call-list" id="detail-calls"></ul>
+    </section>
+
+    <section id="manage" hidden>
+      <button class="back ghost" id="manage-back">‹ Volver</button>
+      <h2>Ejecutivos</h2>
+      <form id="add-form" class="add-form">
+        <input id="new-name" placeholder="Nombre del ejecutivo" required maxlength="100">
+        <button type="submit">Agregar</button>
+      </form>
+      <p class="muted">Cada ejecutivo recibe un código de 6 letras. Se ingresa una sola vez en la app de su teléfono Android.</p>
+      <ul id="manage-list" class="manage-list"></ul>
+      <button id="logout" class="ghost danger">Cerrar sesión</button>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
