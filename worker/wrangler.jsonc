@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "control-llamados",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "../server/public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/health"]
+  },
+  "vars": { "TIMEZONE": "America/Santiago" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "llamados",
+      // Replace with the id printed by: npx wrangler d1 create llamados
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ]
+  // Secrets (npx wrangler secret put ...): ADMIN_PASSWORD, SESSION_SECRET
+}
