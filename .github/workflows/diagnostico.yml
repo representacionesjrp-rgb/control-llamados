@@ -24,7 +24,12 @@ jobs:
           ACCOUNT_ID=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/accounts | jq -r '.result[0].id')
           export CLOUDFLARE_ACCOUNT_ID="$ACCOUNT_ID"
           SINCE=$(( ($(TZ=America/Santiago date -d 'today 00:00' +%s)) * 1000 ))
-          q() { npx wrangler d1 execute llamados --remote --json --command "$1" | jq -r '.[0].results[] | [.[]] | @tsv'; }
+          ID=$(npx wrangler d1 list --json | jq -r '.[] | select(.name == "llamados") | .uuid')
+          sed -i "s/00000000-0000-0000-0000-000000000000/$ID/" wrangler.jsonc
+          q() {
+            out=$(npx wrangler d1 execute llamados --remote --json --command "$1")
+            echo "$out" | jq -r '(if type == "array" then .[0] else . end) | .results[] | [.[]] | @tsv' || echo "$out" | head -c 2000
+          }
           echo "== Telefonos: id, modelo, ultimo envio (Santiago)"
           q "SELECT id, device_model, datetime(last_sync_at/1000, 'unixepoch', '-3 hours') FROM executives WHERE device_token_hash IS NOT NULL"
           echo "== Hoy por telefono: id, llamadas, con espera medida, atraso promedio s, atraso max s, llamadas con atraso > 2 min"
