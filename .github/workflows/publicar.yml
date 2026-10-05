@@ -108,6 +108,9 @@ jobs:
           fi
           test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' -d '{"password":"x"}' "$URL/api/login")" = 401
           curl -fsSI "$URL/descargas/control-llamados.apk" | grep -i 'content-type'
+          # Certificate chain, to check that old Android phones (6.0+) trust the server.
+          HOST="${URL#https://}"
+          openssl s_client -connect "$HOST:443" -servername "$HOST" -showcerts </dev/null 2>/dev/null | grep -E '^ *[0-9]+ s:|^ *i:' || true
           {
             echo "### Publicado"
             echo "- Panel: $URL"

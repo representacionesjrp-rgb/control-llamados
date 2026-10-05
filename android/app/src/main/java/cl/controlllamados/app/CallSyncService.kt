@@ -99,6 +99,8 @@ class CallSyncService : Service() {
         }
 
         private fun createChannel(context: Context) {
+            // Channels exist since Android 8; older phones show the notification without one.
+            if (Build.VERSION.SDK_INT < 26) return
             val channel = NotificationChannel(CHANNEL_ID, "Sincronizacion", NotificationManager.IMPORTANCE_MIN)
             channel.setShowBadge(false)
             context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
