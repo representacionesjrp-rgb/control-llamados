@@ -21,7 +21,7 @@ App para que Jonathan (dueño, escribe en español, no es programador) controle 
   - `CallSyncService`: servicio en primer plano (`specialUse`) con `ContentObserver` sobre `CallLog.Calls`; envía cada llamada ~4 s después de colgar y revisa cada 10 min.
   - `SyncWorker`: respaldo con WorkManager cada 15 min. `BootReceiver` lo reinicia al encender.
   - `Sync.kt`: lee el registro desde la última llamada enviada menos 3 h (el servidor hace upsert, reenviar es seguro). Al vincular (o al actualizar desde una versión vieja) envía una vez los últimos 120 días (`historyDaysSent`).
-  - `minSdk = 23` (Android 6.0) para teléfonos antiguos como el ZTE Blade A602; el código que usa APIs nuevas va protegido con `Build.VERSION.SDK_INT`. Íconos PNG en `mipmap-*dpi` para Android < 8.
+  - `minSdk = 23` (Android 6.0) para teléfonos antiguos como el ZTE Blade A602; el código que usa APIs nuevas va protegido con `Build.VERSION.SDK_INT`. Íconos PNG en `mipmap-*dpi` para Android < 8. `OldAndroidTls.kt` agrega las raíces de Let's Encrypt (ISRG X1/X2) solo en Android < 7.1.1, que no las trae y no podría conectarse a workers.dev.
   - Firmada con `android/app/llamados.keystore` (en el repo a propósito, para que cada versión se instale encima). No cambiar la clave o los teléfonos tendrán que desinstalar.
   - La dirección del servidor se graba al compilar (`SERVER_URL` o `serverUrl` en `gradle.properties`).
 - `worker/`: API en Cloudflare Workers + base D1 (`migrations/`). Sin framework; rutas en `src/index.ts`.

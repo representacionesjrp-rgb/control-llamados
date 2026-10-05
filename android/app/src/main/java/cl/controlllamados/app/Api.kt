@@ -5,6 +5,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import javax.net.ssl.HttpsURLConnection
 
 class ApiException(val status: Int, message: String) : IOException(message)
 
@@ -12,6 +13,7 @@ object Api {
     private fun post(url: String, body: JSONObject, token: String? = null): JSONObject {
         val connection = URL(url).openConnection() as HttpURLConnection
         try {
+            if (connection is HttpsURLConnection) OldAndroidTls.apply(connection)
             connection.requestMethod = "POST"
             connection.connectTimeout = 15_000
             connection.readTimeout = 30_000
