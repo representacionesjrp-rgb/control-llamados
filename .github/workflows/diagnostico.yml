@@ -37,3 +37,6 @@ jobs:
           q "SELECT c.executive_id, COUNT(*), SUM(c.ring_sec IS NOT NULL), CAST(AVG($LAG) AS INT), MAX($LAG), SUM($LAG > 120) FROM calls c WHERE c.started_at >= $SINCE GROUP BY c.executive_id"
           echo "== Hoy por telefono y hora de la llamada: id, hora, llamadas, atraso max s, hora de llegada max"
           q "SELECT c.executive_id, strftime('%H', c.started_at/1000, 'unixepoch', '-3 hours'), COUNT(*), MAX($LAG), strftime('%H:%M', MAX(c.received_at)/1000, 'unixepoch', '-3 hours') FROM calls c WHERE c.started_at >= $SINCE GROUP BY 1, 2 ORDER BY 1, 2"
+          echo "== Ultimos 7 dias por telefono y dia: id, dia, llamadas, atraso promedio s, atraso max s, con atraso > 2 min"
+          WEEK=$(( SINCE - 7 * 86400000 ))
+          q "SELECT c.executive_id, date(c.started_at/1000, 'unixepoch', '-3 hours'), COUNT(*), CAST(AVG($LAG) AS INT), MAX($LAG), SUM($LAG > 120) FROM calls c WHERE c.started_at >= $WEEK AND c.received_at - c.started_at < 86400000 GROUP BY 1, 2 ORDER BY 1, 2"
