@@ -119,7 +119,10 @@ class MainActivity : Activity() {
         val batteryOk = isIgnoringBatteryOptimizations()
         checkRow(permissionOk, "Acceso al registro de llamadas")
         checkRow(batteryOk, "Funciona en segundo plano")
+        val phoneOk = CallTimer.hasPermission(this)
+        checkRow(phoneOk, "Mide el tiempo de espera")
         if (!permissionOk) button("Dar permiso de llamadas") { requestPermissionsIfNeeded() }
+        else if (!phoneOk) button("Dar permiso de telefono") { requestPermissionsIfNeeded() }
         if (!batteryOk) button("Permitir segundo plano") { requestBatteryExemption() }
 
         val last = if (prefs.lastSyncAt > 0) {
@@ -154,6 +157,7 @@ class MainActivity : Activity() {
     private fun requestPermissionsIfNeeded() {
         val needed = mutableListOf<String>()
         if (!hasCallLogPermission()) needed += Manifest.permission.READ_CALL_LOG
+        if (!CallTimer.hasPermission(this)) needed += Manifest.permission.READ_PHONE_STATE
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) needed += Manifest.permission.POST_NOTIFICATIONS

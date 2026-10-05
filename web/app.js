@@ -124,7 +124,7 @@ function callRow(c, { multiDay, showExec }) {
   const when = multiDay ? fmtDateTime(c.started_at) : fmtTime(c.started_at);
   const who = c.contact_name ? `<b>${esc(c.contact_name)}</b><span class="num">${esc(number)}</span>` : `<b class="num">${esc(number)}</b>`;
   return `<li class="${cls}"><span class="icon">${icon}</span>
-    <span class="who">${who}<span>${showExec ? `<span class="exec">${esc(c.executive_name)}</span> · ` : ""}${esc(label)} · ${when}</span></span>
+    <span class="who">${who}<span>${showExec ? `<span class="exec">${esc(c.executive_name)}</span> · ` : ""}${esc(label)} · ${when}${c.ring_sec != null ? ` · esperó ${c.ring_sec} s` : ""}</span></span>
     <span class="dur">${fmtTalk(c.duration_sec)}</span></li>`;
 }
 
@@ -277,10 +277,10 @@ async function downloadCsv(kind) {
     return;
   }
   const dateFmt = new Intl.DateTimeFormat("es-CL", { timeZone: state.timezone, year: "numeric", month: "2-digit", day: "2-digit" });
-  const lines = [["Ejecutivo", "Fecha", "Hora", "Tipo", "Número", "Contacto", "Duración (segundos)", "Duración (min:seg)"]];
+  const lines = [["Ejecutivo", "Fecha", "Hora", "Tipo", "Número", "Contacto", "Duración (segundos)", "Duración (min:seg)", "Espera (segundos)"]];
   for (const c of rows) {
     lines.push([c.executive_name, dateFmt.format(new Date(c.started_at)), fmtTime(c.started_at), callKind(c)[2],
-      c.number, c.contact_name || "", c.duration_sec, fmtDuration(c.duration_sec)]);
+      c.number, c.contact_name || "", c.duration_sec, fmtDuration(c.duration_sec), c.ring_sec ?? ""]);
   }
   const csv = "\ufeff" + lines.map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
   const a = document.createElement("a");

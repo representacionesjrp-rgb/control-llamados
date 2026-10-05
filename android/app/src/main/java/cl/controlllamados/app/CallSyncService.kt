@@ -55,6 +55,7 @@ class CallSyncService : Service() {
             if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0,
         )
         runCatching { contentResolver.registerContentObserver(CallLog.Calls.CONTENT_URI, true, observer) }
+        CallTimer.register(this)
         handler.post(periodicRunnable)
     }
 
@@ -63,6 +64,8 @@ class CallSyncService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+        // The phone permission may have been granted after the service started.
+        CallTimer.register(this)
         handler.post(syncRunnable)
         return START_STICKY
     }
@@ -78,6 +81,7 @@ class CallSyncService : Service() {
 
     override fun onDestroy() {
         runCatching { contentResolver.unregisterContentObserver(observer) }
+        CallTimer.unregister(this)
         handler.removeCallbacksAndMessages(null)
         thread.quitSafely()
         super.onDestroy()

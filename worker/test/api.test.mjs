@@ -32,15 +32,16 @@ test("pair a phone, upload calls, and read today's summary", async () => {
   const now = Date.now();
   const calls = [
     { deviceCallId: "1", number: "+56911111111", contactName: "Cliente Uno", type: "outgoing", startedAt: now - 60_000, durationSec: 125 },
-    { deviceCallId: "2", number: "+56922222222", type: "outgoing", startedAt: now - 50_000, durationSec: 0 },
+    { deviceCallId: "2", number: "+56922222222", type: "outgoing", startedAt: now - 50_000, durationSec: 0, waitSec: 15 },
     { deviceCallId: "3", number: "+56911111111", type: "outgoing", startedAt: now - 40_000, durationSec: 35 },
     { deviceCallId: "4", number: "+56933333333", type: "incoming", startedAt: now - 30_000, durationSec: 60 },
     { deviceCallId: "5", number: "+56944444444", type: "missed", startedAt: now - 20_000, durationSec: 0 }
   ];
   assert.equal((await call("POST", "/api/device/calls", { calls }, "bad")).status, 401);
   assert.equal((await call("POST", "/api/device/calls", { calls }, paired.body.token)).status, 200);
-  // Re-sending is idempotent and updates the duration.
+  // Re-sending is idempotent and updates the duration; a resend without the wait time keeps it.
   calls[1].durationSec = 0;
+  delete calls[1].waitSec;
   assert.equal((await call("POST", "/api/device/calls", { calls }, paired.body.token)).status, 200);
   assert.equal((await call("POST", "/api/device/calls", { calls: [] }, paired.body.token)).status, 200);
 
@@ -65,6 +66,8 @@ test("pair a phone, upload calls, and read today's summary", async () => {
   assert.equal(mine.body.calls[0].executive_name, name);
   const noAnswer = await call("GET", `/api/admin/calls?exec=${row.id}&type=noans`, undefined, admin);
   assert.equal(noAnswer.body.total, 1);
+  assert.equal(noAnswer.body.calls[0].ring_sec, 15);
+  assert.equal(mine.body.calls.find((c) => c.duration_sec === 125).ring_sec, null);
   const limited = await call("GET", `/api/admin/calls?exec=${row.id}&limit=10`, undefined, admin);
   assert.equal(limited.body.calls.length, 10);
   assert.equal(limited.body.total, 505);

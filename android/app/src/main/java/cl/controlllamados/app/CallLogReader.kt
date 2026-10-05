@@ -11,6 +11,8 @@ data class CallRecord(
     val type: String,
     val startedAt: Long,
     val durationSec: Long,
+    /** Seconds waiting for an answer, when the app measured it (see CallTimer). */
+    val waitSec: Long? = null,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("deviceCallId", id.toString())
@@ -19,6 +21,7 @@ data class CallRecord(
         .put("type", type)
         .put("startedAt", startedAt)
         .put("durationSec", durationSec)
+        .apply { if (waitSec != null) put("waitSec", waitSec) }
 }
 
 object CallLogReader {

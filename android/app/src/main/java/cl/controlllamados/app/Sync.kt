@@ -34,7 +34,7 @@ object Sync {
             prefs.lastCallDate - OVERLAP_MS
         }
         return try {
-            val calls = CallLogReader.readSince(context, since)
+            val calls = CallTimer.withWaitTimes(context, CallLogReader.readSince(context, since))
             for (chunk in calls.chunked(BATCH)) {
                 Api.uploadCalls(prefs.serverUrl, token, chunk)
                 prefs.lastCallDate = maxOf(prefs.lastCallDate, chunk.maxOf { it.startedAt })

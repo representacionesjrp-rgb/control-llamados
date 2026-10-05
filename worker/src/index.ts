@@ -29,7 +29,8 @@ const callSchema = z.object({
   contactName: z.string().max(200).nullish(),
   type: z.enum(["outgoing", "incoming", "missed", "rejected", "blocked", "voicemail", "other"]),
   startedAt: z.number().int().positive(),
-  durationSec: z.number().int().min(0).max(24 * 3600)
+  durationSec: z.number().int().min(0).max(24 * 3600),
+  waitSec: z.number().int().min(0).max(3600).nullish()
 });
 
 const json = (body: unknown, status = 200) =>
@@ -116,16 +117,17 @@ async function route(request: Request, env: Env): Promise<Response> {
     const now = Date.now();
     // One statement for the whole batch: D1's free plan allows 50 queries per request and 100 bound values per query.
     const rows = JSON.stringify(
-      calls.map((c) => [c.deviceCallId, c.number, c.contactName ?? null, c.type, c.startedAt, c.durationSec])
+      calls.map((c) => [c.deviceCallId, c.number, c.contactName ?? null, c.type, c.startedAt, c.durationSec, c.waitSec ?? null])
     );
     await db.batch([
       db
         .prepare(
-          `INSERT INTO calls (executive_id, device_call_id, number, contact_name, type, started_at, duration_sec, received_at)
-           SELECT ?1, value ->> 0, value ->> 1, value ->> 2, value ->> 3, value ->> 4, value ->> 5, ?2
+          `INSERT INTO calls (executive_id, device_call_id, number, contact_name, type, started_at, duration_sec, ring_sec, received_at)
+           SELECT ?1, value ->> 0, value ->> 1, value ->> 2, value ->> 3, value ->> 4, value ->> 5, value ->> 6, ?2
            FROM json_each(?3) WHERE true
            ON CONFLICT (executive_id, device_call_id) DO UPDATE SET
-             contact_name = excluded.contact_name, type = excluded.type, duration_sec = excluded.duration_sec`
+             contact_name = excluded.contact_name, type = excluded.type, duration_sec = excluded.duration_sec,
+             ring_sec = COALESCE(excluded.ring_sec, calls.ring_sec)`
         )
         .bind(executive.id, now, rows),
       db.prepare("UPDATE executives SET last_sync_at = ? WHERE id = ?").bind(now, executive.id)
@@ -237,7 +239,7 @@ async function route(request: Request, env: Env): Promise<Response> {
       const [list, totals] = await db.batch([
         db
           .prepare(
-            `SELECT c.executive_id, e.name AS executive_name, c.number, c.contact_name, c.type, c.started_at, c.duration_sec
+            `SELECT c.executive_id, e.name AS executive_name, c.number, c.contact_name, c.type, c.started_at, c.duration_sec, c.ring_sec
              FROM calls c JOIN executives e ON e.id = c.executive_id
              WHERE ${where} ORDER BY c.started_at DESC LIMIT ${q.limit}`
           )
@@ -259,7 +261,7 @@ async function route(request: Request, env: Env): Promise<Response> {
       if (!executive) throw new AppError(404, "NOT_FOUND", "Ejecutivo no encontrado.");
       const { results } = await db
         .prepare(
-          `SELECT number, contact_name, type, started_at, duration_sec FROM calls
+          `SELECT number, contact_name, type, started_at, duration_sec, ring_sec FROM calls
            WHERE executive_id = ? AND started_at >= ? AND started_at < ?
            ORDER BY started_at DESC LIMIT 2000`
         )
