@@ -4,6 +4,7 @@ const REFRESH_MS = 30_000;
 const state = {
   token: load("token"),
   period: load("period") || "today",
+  dayMode: load("dayMode") || "total",
   customFrom: load("customFrom"),
   customTo: load("customTo"),
   timezone: "America/Santiago",
@@ -224,11 +225,42 @@ function renderDetail(data) {
     bars += `<div class="h" title="${h}:00 · ${byHour[h]} llamadas"><i style="height:${(byHour[h] / max) * 100}%"></i><small>${h % 2 === 0 ? h : ""}</small></div>`;
   }
   $("detail-hours").innerHTML = bars;
+  renderDays(data);
 
   state.lastDetail = data;
   $("detail-calls").innerHTML = calls.length
     ? calls.map((c) => callRow(c, { multiDay: data.from !== data.to })).join("")
     : `<li class="empty" style="display:block">Sin llamadas en este período.</li>`;
+}
+
+const WEEKDAYS = ["do", "lu", "ma", "mi", "ju", "vi", "sá"];
+
+/** Outgoing calls per day: green = answered, red = not answered (stacked in "Totales"). */
+function renderDays(data) {
+  const dayFmt = new Intl.DateTimeFormat("en-CA", { timeZone: state.timezone, year: "numeric", month: "2-digit", day: "2-digit" });
+  const days = [];
+  for (let d = new Date(`${data.from}T12:00:00Z`); d.toISOString().slice(0, 10) <= data.to; d.setUTCDate(d.getUTCDate() + 1)) {
+    days.push(d.toISOString().slice(0, 10));
+  }
+  const counts = Object.fromEntries(days.map((day) => [day, { ok: 0, bad: 0 }]));
+  for (const c of data.calls) {
+    if (c.type !== "outgoing") continue;
+    const day = counts[dayFmt.format(new Date(c.started_at))];
+    if (day) day[c.duration_sec > 0 ? "ok" : "bad"]++;
+  }
+  const mode = state.dayMode;
+  const shown = (n) => (mode === "ok" ? n.ok : mode === "bad" ? n.bad : n.ok + n.bad);
+  const max = Math.max(1, ...days.map((day) => shown(counts[day])));
+  const every = Math.ceil(days.length / 12);
+  $("day-modes").querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
+  $("detail-days").innerHTML = days.map((day, i) => {
+    const n = counts[day];
+    const ok = mode === "bad" ? 0 : n.ok, bad = mode === "ok" ? 0 : n.bad;
+    const date = new Date(`${day}T12:00:00Z`);
+    const label = days.length <= 8 ? `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()}` : (i % every === 0 ? date.getUTCDate() : "");
+    const title = `${date.getUTCDate()}/${date.getUTCMonth() + 1} · ${n.ok} contestadas · ${n.bad} no contestadas · ${n.ok + n.bad} en total`;
+    return `<div class="h" title="${title}">${days.length <= 14 && ok + bad ? `<b>${ok + bad}</b>` : ""}<span class="stack" style="height:${((ok + bad) / max) * 100}%"><i class="bad" style="flex:${bad}"></i><i class="ok" style="flex:${ok}"></i></span><small>${label}</small></div>`;
+  }).join("");
 }
 
 const installUrl = () => `${location.origin}/instalar/`;
@@ -412,6 +444,13 @@ $("all-type").addEventListener("change", refresh);
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-csv]");
   if (button) downloadCsv(button.dataset.csv);
+});
+$("day-modes").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-mode]");
+  if (!button || !state.lastDetail) return;
+  state.dayMode = button.dataset.mode;
+  save("dayMode", state.dayMode);
+  renderDays(state.lastDetail);
 });
 $("detail-back").addEventListener("click", () => { show("dashboard"); refresh(); });
 $("manage-back").addEventListener("click", () => { show("dashboard"); refresh(); });

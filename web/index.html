@@ -62,6 +62,15 @@
       <div class="totals" id="detail-totals"></div>
       <h3>Llamadas por hora</h3>
       <div class="hours" id="detail-hours"></div>
+      <div class="list-head"><h3>Llamadas por día</h3>
+        <nav class="day-modes" id="day-modes">
+          <button data-mode="total" class="active">Totales</button>
+          <button data-mode="ok">Contestadas</button>
+          <button data-mode="bad">No contestadas</button>
+        </nav>
+      </div>
+      <div class="hours days" id="detail-days"></div>
+      <p class="legend"><span class="ok">■</span> Contestadas <span class="bad">■</span> No contestadas</p>
       <div class="list-head"><h3>Detalle de llamadas</h3><button class="ghost" data-csv="detail">Descargar Excel</button></div>
       <ul class="call-list" id="detail-calls"></ul>
     </section>

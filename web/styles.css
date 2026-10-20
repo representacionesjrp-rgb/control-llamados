@@ -97,6 +97,18 @@ input {
 .hours { display: flex; align-items: flex-end; gap: 3px; height: 110px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 8px 22px; position: relative; }
 .hours .h { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; position: relative; }
 .hours .h i { display: block; background: var(--brand); border-radius: 3px 3px 0 0; min-height: 0; }
+.days .h .stack { display: flex; flex-direction: column; border-radius: 3px 3px 0 0; overflow: hidden; }
+.days .h .stack i { border-radius: 0; }
+.days .h i.ok { background: var(--ok); }
+.days .h i.bad { background: var(--bad); }
+.days .h b { font-size: 10px; font-weight: 600; color: var(--muted); text-align: center; margin-bottom: 2px; }
+.day-modes { display: flex; gap: 4px; flex-wrap: wrap; }
+.day-modes button { font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
+.day-modes button.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+.legend { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+.legend .ok { color: var(--ok); }
+.legend .bad { color: var(--bad); margin-left: 8px; }
+.days .h small { white-space: nowrap; }
 .hours .h small { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--muted); }
 
 .call-list { list-style: none; padding: 0; margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
@@ -123,7 +135,7 @@ input {
 a { color: var(--brand); }
 button.wide { width: 100%; margin: 0 0 14px; padding: 13px; font-size: 16px; }
 .card-link { margin-top: 10px; color: var(--brand); font-weight: 600; font-size: 15px; }
-.list-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.list-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .list-head h3, .list-head p { margin: 22px 0 8px; }
 .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 4px; }
 select { font: inherit; width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
