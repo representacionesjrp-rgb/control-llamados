@@ -252,6 +252,8 @@ function renderDays(data) {
   const shown = (n) => (mode === "ok" ? n.ok : mode === "bad" ? n.bad : n.ok + n.bad);
   const max = Math.max(1, ...days.map((day) => shown(counts[day])));
   const every = Math.ceil(days.length / 12);
+  const showCounts = days.length <= 14;
+  const scale = showCounts ? 85 : 100; // leave room for the count above the tallest bar
   $("day-modes").querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
   $("detail-days").innerHTML = days.map((day, i) => {
     const n = counts[day];
@@ -259,7 +261,7 @@ function renderDays(data) {
     const date = new Date(`${day}T12:00:00Z`);
     const label = days.length <= 8 ? `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()}` : (i % every === 0 ? date.getUTCDate() : "");
     const title = `${date.getUTCDate()}/${date.getUTCMonth() + 1} · ${n.ok} contestadas · ${n.bad} no contestadas · ${n.ok + n.bad} en total`;
-    return `<div class="h" title="${title}">${days.length <= 14 && ok + bad ? `<b>${ok + bad}</b>` : ""}<span class="stack" style="height:${((ok + bad) / max) * 100}%"><i class="bad" style="flex:${bad}"></i><i class="ok" style="flex:${ok}"></i></span><small>${label}</small></div>`;
+    return `<div class="h" title="${title}">${showCounts && ok + bad ? `<b>${ok + bad}</b>` : ""}<i class="bad${bad ? " top" : ""}" style="height:${(bad / max) * scale}%"></i><i class="ok${bad ? "" : " top"}" style="height:${(ok / max) * scale}%"></i><small>${label}</small></div>`;
   }).join("");
 }
 
