@@ -40,3 +40,21 @@ jobs:
           echo "== Ultimos 7 dias por telefono y dia: id, dia, llamadas, atraso promedio s, atraso max s, con atraso > 2 min"
           WEEK=$(( SINCE - 7 * 86400000 ))
           q "SELECT c.executive_id, date(c.started_at/1000, 'unixepoch', '-3 hours'), COUNT(*), CAST(AVG($LAG) AS INT), MAX($LAG), SUM($LAG > 120) FROM calls c WHERE c.started_at >= $WEEK AND c.received_at - c.started_at < 86400000 GROUP BY 1, 2 ORDER BY 1, 2"
+          echo "== Ultimos 14 dias por telefono: id, dia, llamadas, recibidas por el servidor ese dia"
+          D14=$(( SINCE - 14 * 86400000 ))
+          q "SELECT c.executive_id, date(c.started_at/1000, 'unixepoch', '-3 hours'), COUNT(*), SUM(date(c.received_at/1000, 'unixepoch', '-3 hours') = date(c.started_at/1000, 'unixepoch', '-3 hours')) FROM calls c WHERE c.started_at >= $D14 GROUP BY 1, 2 ORDER BY 1, 2"
+          echo "== Largos de campos (max): numero, nombre, id"
+          q "SELECT MAX(length(number)), MAX(length(contact_name)), MAX(length(device_call_id)), MIN(started_at), COUNT(*) FROM calls"
+          echo "== Uso de D1"
+          npx wrangler d1 info llamados || true
+          START=$(date -u -d '14 days ago' +%Y-%m-%d); END=$(date -u +%Y-%m-%d)
+          gql() {
+            jq -n --arg q "$1" --arg a "$ACCOUNT_ID" --arg s "$START" --arg e "$END" '{query: $q, variables: {a: $a, s: $s, e: $e}}' |
+              curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" https://api.cloudflare.com/client/v4/graphql -d @-
+          }
+          echo "== D1 por dia: lecturas, escrituras, filas leidas, filas escritas"
+          gql 'query($a: string!, $s: Date!, $e: Date!) { viewer { accounts(filter: {accountTag: $a}) { d1AnalyticsAdaptiveGroups(limit: 100, filter: {date_geq: $s, date_leq: $e}, orderBy: [date_ASC]) { sum { readQueries writeQueries rowsRead rowsWritten } dimensions { date } } } } }' |
+            jq -c '(.errors // empty), (.data.viewer.accounts[0].d1AnalyticsAdaptiveGroups[]? | [.dimensions.date, .sum.readQueries, .sum.writeQueries, .sum.rowsRead, .sum.rowsWritten])' || true
+          echo "== Worker por dia y estado: peticiones, errores"
+          gql 'query($a: string!, $s: Date!, $e: Date!) { viewer { accounts(filter: {accountTag: $a}) { workersInvocationsAdaptive(limit: 500, filter: {scriptName: "control-llamados", date_geq: $s, date_leq: $e}, orderBy: [date_ASC]) { sum { requests errors } dimensions { date status } } } } }' |
+            jq -c '(.errors // empty), (.data.viewer.accounts[0].workersInvocationsAdaptive[]? | [.dimensions.date, .dimensions.status, .sum.requests, .sum.errors])' || true
