@@ -269,6 +269,21 @@ async function route(request: Request, env: Env): Promise<Response> {
         .all();
       return json({ ok: true, from, to, timezone: tz, executive, calls: results });
     }
+
+    // Outgoing calls for the "Llamadas por día" chart, which has its own date range.
+    const dailyMatch = sub.match(/^\/executives\/(\d+)\/daily$/);
+    if (method === "GET" && dailyMatch) {
+      const { from, to, start, end } = range();
+      const { results } = await db
+        .prepare(
+          `SELECT started_at, duration_sec > 0 AS answered FROM calls
+           WHERE executive_id = ? AND type = 'outgoing' AND started_at >= ? AND started_at < ?
+           LIMIT 50000`
+        )
+        .bind(Number(dailyMatch[1]), start, end)
+        .all();
+      return json({ ok: true, from, to, timezone: tz, calls: results });
+    }
   }
 
   throw new AppError(404, "NOT_FOUND", "Ruta no encontrada.");

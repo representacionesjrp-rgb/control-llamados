@@ -34,7 +34,7 @@ App para que Jonathan (dueño, escribe en español, no es programador) controle 
 ## API
 
 - `POST /api/login` `{password}` → token de administrador.
-- `GET /api/admin/summary?from=YYYY-MM-DD&to=YYYY-MM-DD`, `GET /api/admin/executives`, `POST /api/admin/executives` `{name}`, `POST /api/admin/executives/:id/pair-code`, `DELETE /api/admin/executives/:id`, `GET /api/admin/executives/:id/calls`, `GET /api/admin/calls?exec=&type=out|noans|in|missed&limit=` (todas, con nombre del ejecutivo y totales; límite por defecto 2000, máximo 50000 para el Excel).
+- `GET /api/admin/summary?from=YYYY-MM-DD&to=YYYY-MM-DD`, `GET /api/admin/executives`, `POST /api/admin/executives` `{name}`, `POST /api/admin/executives/:id/pair-code`, `DELETE /api/admin/executives/:id`, `GET /api/admin/executives/:id/calls`, `GET /api/admin/executives/:id/daily?from=&to=` (salientes con `answered`, para el gráfico "Llamadas por día", que tiene su propio rango: 7 / 15 / 30 días o fechas), `GET /api/admin/calls?exec=&type=out|noans|in|missed&limit=` (todas, con nombre del ejecutivo y totales; límite por defecto 2000, máximo 50000 para el Excel).
 - Las llamadas se guardan sin límite de tiempo; el panel permite elegir cualquier mes de los últimos 12 o un rango de fechas ("Otro período").
 - `POST /api/device/pair` `{code, deviceModel}` → token del teléfono. `POST /api/device/calls` `{calls:[{deviceCallId, number, contactName, type, startedAt, durationSec, waitSec?}]}`.
 - `waitSec` (columna `ring_sec`) = segundos esperando que contesten. Android no lo guarda: `CallTimer.kt` mide marcar/sonar → colgar con el estado del teléfono (permiso `READ_PHONE_STATE`) y resta la duración. Es `null` en llamadas de versiones antiguas o sin el permiso; reenviar sin el dato no lo borra.

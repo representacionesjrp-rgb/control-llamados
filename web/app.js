@@ -5,6 +5,9 @@ const state = {
   token: load("token"),
   period: load("period") || "today",
   dayMode: load("dayMode") || "total",
+  dayRange: load("dayRange") || "7",
+  dayFrom: load("dayFrom"),
+  dayTo: load("dayTo"),
   customFrom: load("customFrom"),
   customTo: load("customTo"),
   timezone: "America/Santiago",
@@ -225,7 +228,7 @@ function renderDetail(data) {
     bars += `<div class="h" title="${h}:00 · ${byHour[h]} llamadas"><i style="height:${(byHour[h] / max) * 100}%"></i><small>${h % 2 === 0 ? h : ""}</small></div>`;
   }
   $("detail-hours").innerHTML = bars;
-  renderDays(data);
+  loadDays();
 
   state.lastDetail = data;
   $("detail-calls").innerHTML = calls.length
@@ -234,6 +237,34 @@ function renderDetail(data) {
 }
 
 const WEEKDAYS = ["do", "lu", "ma", "mi", "ju", "vi", "sá"];
+
+/** Date range of the "Llamadas por día" chart, independent from the period buttons at the top. */
+function dayRangeDates() {
+  if (state.dayRange === "custom" && state.dayFrom && state.dayTo) {
+    const [from, to] = [state.dayFrom, state.dayTo].sort();
+    return { from, to };
+  }
+  const days = Number(state.dayRange) || 7;
+  return { from: localDate(1 - days), to: localDate(0) };
+}
+
+async function loadDays() {
+  const id = state.detailId;
+  const { from, to } = dayRangeDates();
+  $("day-ranges").querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.range === state.dayRange));
+  $("day-custom").hidden = state.dayRange !== "custom";
+  $("day-from").value = from;
+  $("day-to").value = to;
+  $("day-from").max = $("day-to").max = localDate(0);
+  try {
+    const data = await api("GET", `/api/admin/executives/${id}/daily?from=${from}&to=${to}`);
+    if (id !== state.detailId) return;
+    state.lastDays = data;
+    renderDays(data);
+  } catch (error) {
+    $("detail-days").innerHTML = `<p class="muted">No se pudo cargar: ${esc(error.message)}</p>`;
+  }
+}
 
 /** Outgoing calls per day: green = answered, red = not answered (stacked in "Totales"). */
 function renderDays(data) {
@@ -244,9 +275,8 @@ function renderDays(data) {
   }
   const counts = Object.fromEntries(days.map((day) => [day, { ok: 0, bad: 0 }]));
   for (const c of data.calls) {
-    if (c.type !== "outgoing") continue;
     const day = counts[dayFmt.format(new Date(c.started_at))];
-    if (day) day[c.duration_sec > 0 ? "ok" : "bad"]++;
+    if (day) day[c.answered ? "ok" : "bad"]++;
   }
   const mode = state.dayMode;
   const shown = (n) => (mode === "ok" ? n.ok : mode === "bad" ? n.bad : n.ok + n.bad);
@@ -449,11 +479,32 @@ document.addEventListener("click", (event) => {
 });
 $("day-modes").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-mode]");
-  if (!button || !state.lastDetail) return;
+  if (!button || !state.lastDays) return;
   state.dayMode = button.dataset.mode;
   save("dayMode", state.dayMode);
-  renderDays(state.lastDetail);
+  renderDays(state.lastDays);
 });
+$("day-ranges").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-range]");
+  if (!button) return;
+  if (button.dataset.range === "custom" && !state.dayFrom) {
+    ({ from: state.dayFrom, to: state.dayTo } = dayRangeDates());
+  }
+  state.dayRange = button.dataset.range;
+  save("dayRange", state.dayRange);
+  loadDays();
+});
+function setDayCustom() {
+  const from = $("day-from").value, to = $("day-to").value;
+  if (!from || !to) return;
+  state.dayFrom = from;
+  state.dayTo = to;
+  save("dayFrom", from);
+  save("dayTo", to);
+  loadDays();
+}
+$("day-from").addEventListener("change", setDayCustom);
+$("day-to").addEventListener("change", setDayCustom);
 $("detail-back").addEventListener("click", () => { show("dashboard"); refresh(); });
 $("manage-back").addEventListener("click", () => { show("dashboard"); refresh(); });
 $("tab-manage").addEventListener("click", () => { show("manage"); refresh(); });

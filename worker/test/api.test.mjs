@@ -60,6 +60,10 @@ test("pair a phone, upload calls, and read today's summary", async () => {
   assert.equal(detail.body.calls.length, 505);
   assert.equal(detail.body.calls.find((c) => c.number === "+56911111111" && c.duration_sec === 125).contact_name, "Cliente Uno");
 
+  const daily = await call("GET", `/api/admin/executives/${row.id}/daily`, undefined, admin);
+  assert.equal(daily.body.calls.length, 503);
+  assert.equal(daily.body.calls.filter((c) => !c.answered).length, 1);
+
   const mine = await call("GET", `/api/admin/calls?exec=${row.id}&limit=50000`, undefined, admin);
   assert.equal(mine.body.total, 505);
   assert.equal(mine.body.calls.length, 505);

@@ -69,6 +69,16 @@
           <button data-mode="bad">No contestadas</button>
         </nav>
       </div>
+      <nav class="day-modes day-ranges" id="day-ranges">
+        <button data-range="7">7 días</button>
+        <button data-range="15">15 días</button>
+        <button data-range="30">1 mes</button>
+        <button data-range="custom">Elegir fechas</button>
+      </nav>
+      <div class="custom-range dates" id="day-custom" hidden>
+        <label>Desde <input type="date" id="day-from"></label>
+        <label>Hasta <input type="date" id="day-to"></label>
+      </div>
       <div class="hours days" id="detail-days"></div>
       <p class="legend"><span class="ok">■</span> Contestadas <span class="bad">■</span> No contestadas</p>
       <div class="list-head"><h3>Detalle de llamadas</h3><button class="ghost" data-csv="detail">Descargar Excel</button></div>

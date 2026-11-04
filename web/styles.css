@@ -107,6 +107,8 @@ input {
 .day-modes { display: flex; gap: 4px; flex-wrap: wrap; }
 .day-modes button { font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
 .day-modes button.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+.day-ranges { margin: 0 0 8px; }
+#day-custom { grid-template-columns: 1fr 1fr; }
 .legend { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
 .legend .ok { color: var(--ok); }
 .legend .bad { color: var(--bad); margin-left: 8px; }
