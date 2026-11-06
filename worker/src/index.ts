@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createHash } from "node:crypto";
 import { hashToken, issueAdminToken, randomPairCode, randomToken, safeEqual, verifyAdminToken } from "./auth";
-import { dateRange, today } from "./time";
+import { addDays, dateRange, startOfDay, today } from "./time";
 
 export interface Env {
   DB: D1Database;
@@ -192,6 +192,9 @@ async function route(request: Request, env: Env): Promise<Response> {
 
     if (method === "GET" && sub === "/summary") {
       const { from, to, start, end } = range();
+      // Start of each day in the business timezone, to count the days each executive had calls.
+      const dayStarts: number[] = [];
+      for (let d = from; d <= to && dayStarts.length < 1000; d = addDays(d, 1)) dayStarts.push(startOfDay(d, tz));
       const { results } = await db
         .prepare(
           `SELECT e.id, e.name, e.device_model, e.last_sync_at, e.pair_code,
@@ -204,13 +207,14 @@ async function route(request: Request, env: Env): Promise<Response> {
              COALESCE(SUM(CASE WHEN c.type = 'outgoing' THEN c.duration_sec ELSE 0 END), 0) AS outgoing_talk_sec,
              COUNT(DISTINCT CASE WHEN c.type = 'outgoing' THEN c.number END) AS distinct_numbers,
              MIN(c.started_at) AS first_call_at,
-             MAX(c.started_at) AS last_call_at
+             MAX(c.started_at) AS last_call_at,
+             COUNT(DISTINCT (SELECT MAX(d.key) FROM json_each(?) d WHERE d.value <= c.started_at)) AS active_days
            FROM executives e
            LEFT JOIN calls c ON c.executive_id = e.id AND c.started_at >= ? AND c.started_at < ?
            GROUP BY e.id
            ORDER BY outgoing DESC, e.name`
         )
-        .bind(start, end)
+        .bind(JSON.stringify(dayStarts), start, end)
         .all();
       return json({ ok: true, from, to, timezone: tz, generatedAt: Date.now(), executives: results });
     }

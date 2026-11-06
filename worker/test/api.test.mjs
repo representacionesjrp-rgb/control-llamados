@@ -55,6 +55,7 @@ test("pair a phone, upload calls, and read today's summary", async () => {
     [row.outgoing, row.outgoing_answered, row.outgoing_unanswered, row.incoming, row.missed, row.talk_sec, row.distinct_numbers],
     [503, 502, 1, 1, 1, 220 + 5000, 3]
   );
+  assert.equal(row.active_days, 1);
 
   const detail = await call("GET", `/api/admin/executives/${row.id}/calls`, undefined, admin);
   assert.equal(detail.body.calls.length, 505);

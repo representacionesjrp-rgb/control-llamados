@@ -117,6 +117,14 @@ input {
 .days.dense .h b, .days.dense .h small { font-size: 8px; letter-spacing: -.02em; }
 .hours .h small { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--muted); }
 
+.avg-chart { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 12px; }
+.avg-head { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.avg-head span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avg-head b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.avg-bar { height: 10px; border-radius: 5px; background: var(--line); margin: 5px 0 3px; overflow: hidden; }
+.avg-bar i { display: block; height: 100%; background: var(--brand); border-radius: 5px; }
+.avg-row small { font-size: 11px; color: var(--muted); }
+
 .call-list { list-style: none; padding: 0; margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
 .call-list li { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); }
 .call-list li:last-child { border-bottom: 0; }

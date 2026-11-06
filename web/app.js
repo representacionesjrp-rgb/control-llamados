@@ -152,7 +152,24 @@ function stat(value, label, cls = "") {
   return `<div class="stat ${cls}"><div class="value">${esc(value)}</div><div class="label">${esc(label)}</div></div>`;
 }
 
+/** Average talk time per day for each executive, counting only the days they had calls. */
+function renderTalkAverage(data) {
+  const rows = data.executives
+    .filter((e) => Number(e.active_days) > 0)
+    .map((e) => ({ name: e.name, days: Number(e.active_days), avg: Number(e.talk_sec) / Number(e.active_days) }))
+    .sort((a, b) => b.avg - a.avg);
+  $("talk-avg-section").hidden = !rows.length;
+  const max = Math.max(1, ...rows.map((r) => r.avg));
+  $("talk-avg").innerHTML = rows.map((r) => `
+    <div class="avg-row">
+      <div class="avg-head"><span>${esc(r.name)}</span><b>${fmtMinutes(r.avg)}</b></div>
+      <div class="avg-bar"><i style="width:${(r.avg / max) * 100}%"></i></div>
+      <small>${r.days === 1 ? "1 día con llamadas" : `${r.days} días con llamadas`}</small>
+    </div>`).join("");
+}
+
 function renderDashboard(data) {
+  renderTalkAverage(data);
   const sum = (k) => data.executives.reduce((a, e) => a + Number(e[k] || 0), 0);
   $("totals").innerHTML =
     stat(sum("outgoing"), "Llamadas realizadas") +
